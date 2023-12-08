@@ -21,4 +21,9 @@
   become: true
   roles:
     - osubuntu
+
+- hosts: controller_node
+  become: true
+  roles:
+    - oscentos
     
