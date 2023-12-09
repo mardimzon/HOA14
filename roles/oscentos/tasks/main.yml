@@ -122,10 +122,6 @@
     line: 'use_keystone_limits = True'
     backup: yes
 
-- name: Populate Image Service Database
-  shell:
-    sudo glance-manage db_sync
-
 #NOVA
 - name: Install Nova
   yum:
