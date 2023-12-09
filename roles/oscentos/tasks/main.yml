@@ -1,1 +1,163 @@
+#oscentos 
+#KEYSTONE
+---
+- name: Install Keystone
+  yum:
+    name: openstack-keystone
+    state: latest
 
+- name: Configure Keystone Config File
+  lineinfile:
+    dest: /etc/keystone/keystone.conf
+    insertafter: '\[database\]'
+    regexp: 'connection = mysql+pymysql://keystone:KEYSTONE_DBPASS@controller/keystone'
+    line: 'connection = mysql+pymysql://keystone:admin123@controller/keystone'
+    backup: yes
+    backrefs: yes
+
+- name: Configure Keystone Config File (Token)
+  lineinfile:
+    dest: /etc/keystone/keystone.conf
+    insertafter: '\[token\]'
+    line: 'provider = fernet'
+    backup: yes
+
+- name: Populate the Database
+  shell:
+    keystone-manage db_sync
+
+- name: Initialize Fernet Key
+  shell:
+    keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+
+- name: Initialize Credential Key
+  shell:
+    keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+
+- name: Configure Apache Server
+  lineinfile:
+    dest: /etc/httpd/conf/httpd.conf
+    line: 'ServerName controller'
+    state: present
+    backup: yes
+
+- name: Configure Admin Account Environmental Variables
+  shell:
+    export OS_USERNAME=admin
+    export OS_PASSWORD=ADMIN_PASS
+    export OS_PROJECT_NAME=admin
+    export OS_USER_DOMANI_NAME=Default
+    export OS_PROJECT_DOMAIN_NAME=Default
+    export OS_AUTH_URL=http://controller:5000/v3
+    export OS_IDENTITY_API_VERSION=3
+
+#GLANCE
+- name: Install Glance
+  yum:
+    name:
+      - openstack-glance
+    state: latest
+
+- name: Configure Glance Database
+  replace:
+    dest: /etc/glance/glance-api.conf
+    regexp: 'connection = mysql+pymysql://glance:GLANCE_DBPASS@controller/glance'
+    replace: 'connection = mysql+pymysql://glance:admin123@controller/glance'
+    backup: yes
+
+- name: Configure Glance Authentication Key
+  lineinfile:
+    dest: /etc/glance/glance-api.conf
+    insertafter: '\[keystone_authtoken\]'
+    line: "{{ item }}"
+    state: present
+    backup: yes
+  with_items:
+    - www_authenticate_uri = http://controller:5000
+    - auth_url = http://controller:5000
+    - memcached_servers = controller:11211
+    - auth_type = password
+    - project_domain_name = Default
+    - user_domain_name = Default
+    - project_name = service
+    - username = glance
+    - password = admin123
+
+- name: Configure Glance Paste Deploy
+  lineinfile:
+    dest: /etc/glance/glance-api.conf
+    insertafter: '\[paste_deploy\]'
+    line: 'flavor = keystone'
+    backup: yes
+
+- name: Configure Glance glance_store
+  lineinfile:
+    dest: /etc/glance/glance-api.conf
+    insertafter: '\[glance_store\]'
+    line: "{{ item }}"
+    state: present
+    backup: yes
+  with_items:
+    - stores = file,http
+    - default_store = file
+    - filesystem_store_datadir = /var/lib/glance/images/
+
+- name: Configure Glance oslo_limit
+  lineinfile:
+    dest: /etc/glance/glance-api.conf
+    insertafter: '\[oslo_limit\]'
+    line: "{{ item }}"
+    state: present
+    backup: yes
+  with_items:
+    - auth_url = http://controller:5000
+    - auth_type = password
+    - user_domain_id = default
+    - username = MY_SERVICE
+    - system_scope = all
+    - password = MY_PASSWORD
+    - endpoint_id = ENDPOINT_ID
+    - region_name = RegionOne
+
+- name: Configure Glance DEFAULT
+  lineinfile:
+    dest: /etc/glance/glance-api.conf
+    insertafter: '\[DEFAULT\]'
+    line: 'use_keystone_limits = True'
+    backup: yes
+
+- name: Populate Image Service Database
+  shell:
+    sudo glance-manage db_sync
+
+#NOVA
+- name: Install Nova
+  yum:
+    name:
+      - openstack-nova-api
+      - openstack-nova-conductor
+      - openstack-nova-novncproxy
+      - openstack-nova-scheduler
+    state: latest
+
+- name: Configure Nova API
+  lineinfile:
+    dest: /etc/nova/nova.conf
+    regexp: 'connection = mysql+pymysql://nova:NOVA_DBPASS@controller/nova_api'
+    line: 'connection = mysql+pymysql://nova:admin123@controller/nova_api'
+    backup: yes
+    backrefs: yes
+
+- name: Configure Nova API
+  lineinfile:
+    dest: /etc/nova/nova.conf
+    insertafter: '\[api\]'
+    line: 'auth_strategy = keystone'
+    state: present
+    backup: yes
+
+- name: Configuring Nova Database
+  lineinfile:
+    dest: /etc/nova/nova.conf
+    regexp: 'connection = mysql+pymysql://nova:NOVA_DBPASS@controller/nova'
+    line: 'connection = mysql+pymysql://nova:admin123@controller
