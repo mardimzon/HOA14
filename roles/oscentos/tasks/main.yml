@@ -21,11 +21,7 @@
     insertafter: '\[token\]'
     line: 'provider = fernet'
     backup: yes
-
-- name: Populate the Database
-  shell:
-    keystone-manage db_sync
-
+    
 - name: Initialize Fernet Key
   shell:
     keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
