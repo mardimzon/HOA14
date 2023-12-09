@@ -161,5 +161,3 @@
     dest: /etc/nova/nova.conf
     regexp: 'connection = mysql+pymysql://nova:NOVA_DBPASS@controller/nova'
     line: 'connection = mysql+pymysql://nova:admin123@controller
-
-
