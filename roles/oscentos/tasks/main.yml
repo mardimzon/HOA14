@@ -24,7 +24,7 @@
 
 - name: Populate the Database
   shell:
-    keystone-manage db_sync
+    sudo keystone-manage db_sync
 
 - name: Initialize Fernet Key
   shell:
