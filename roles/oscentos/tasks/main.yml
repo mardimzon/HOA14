@@ -131,7 +131,6 @@
     sudo glance-manage db_sync
 
 #NOVA
----
 - name: Install Nova
   yum:
     name:
